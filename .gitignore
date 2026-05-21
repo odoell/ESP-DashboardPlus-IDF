@@ -1,0 +1,19 @@
+# Generated at build time
+src/dashboard_html.c
+src/dashboard_html.h
+
+# TLS certificates (generated locally, never commit private keys)
+certs/
+*.pem
+*.key
+*.crt
+*.der
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# macOS / Windows
+.DS_Store
+Thumbs.db

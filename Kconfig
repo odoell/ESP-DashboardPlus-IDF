@@ -1,0 +1,41 @@
+menu "ESP Dashboard Plus"
+
+config DASHBOARD_USE_HTTP
+    bool "Use plain HTTP/WS instead of HTTPS/WSS"
+    default n
+    help
+        When enabled the dashboard is served over plain HTTP and WebSocket
+        (no TLS).  Useful during development to avoid self-signed certificate
+        issues in browsers.
+        WARNING: Traffic is unencrypted.  Do not use in production.
+
+config DASHBOARD_MAX_STR_LEN
+    int "Max string field length (chars)"
+    default 64
+    range 16 256
+    help
+        Maximum length for card string fields: id, title, value, unit, etc.
+        Larger values increase RAM per card slot.
+
+config DASHBOARD_MAX_CLIENTS
+    int "Max simultaneous WebSocket clients"
+    default 4
+    range 1 8
+    help
+        Maximum number of browser tabs / WebSocket connections served simultaneously.
+
+config DASHBOARD_PORT
+    int "Listen port"
+    default 80 if DASHBOARD_USE_HTTP
+    default 443
+    range 1 65535
+    help
+        TCP port the dashboard server listens on.
+        Defaults to 80 (HTTP) or 443 (HTTPS).
+
+config DASHBOARD_MAX_DROPDOWN_OPTS
+    int "Max options per dropdown card"
+    default 8
+    range 2 32
+
+endmenu
