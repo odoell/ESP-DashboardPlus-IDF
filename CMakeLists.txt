@@ -2,7 +2,7 @@
 # EXTRA_COMPONENT_DIRS), LIB_DIR defaults to this file's directory.
 # When included from an external thin wrapper, the caller sets LIB_DIR first.
 if(NOT DEFINED LIB_DIR)
-    set(LIB_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+    set(LIB_DIR "${CMAKE_CURRENT_LIST_DIR}")
 endif()
 
 # Generate TLS certificates only in HTTPS mode (idempotent — skips when certs exist)

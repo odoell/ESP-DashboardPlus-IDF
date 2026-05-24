@@ -4,6 +4,6 @@ description: "Real-time web dashboard for ESP32 with WebSocket transport (ESP-ID
 url: "https://github.com/aaronbeckmann/ESP-DashboardPlus-IDF"
 dependencies:
   idf:
-    version: ">=6.0.0"
+    version: ">=5.0.0"
   espressif/cjson:
     version: "*"
