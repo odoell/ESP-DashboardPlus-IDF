@@ -25,6 +25,7 @@ if(EXISTS "${LIB_DIR}/scripts/html_to_header_idf.py")
         COMMAND ${PYTHON} "${LIB_DIR}/scripts/html_to_header_idf.py"
                 "${LIB_DIR}/extras/dashboard.html"
                 "${LIB_DIR}/src/dashboard_html.c"
+                "${LIB_DIR}/include/dashboard_html.h"
         RESULT_VARIABLE _html_result
         ERROR_VARIABLE  _html_error
     )

@@ -1,6 +1,6 @@
 # Generated at build time
 src/dashboard_html.c
-src/dashboard_html.h
+include/dashboard_html.h
 
 # TLS certificates (generated locally, never commit private keys)
 certs/
