@@ -24,6 +24,15 @@ config DASHBOARD_MAX_CLIENTS
     help
         Maximum number of browser tabs / WebSocket connections served simultaneously.
 
+config DASHBOARD_MAX_WS_FRAME_LEN
+    int "Max inbound WebSocket text frame length (bytes)"
+    default 4096
+    range 256 65536
+    help
+        Reject inbound WebSocket text frames larger than this limit before
+        allocating a receive buffer.  Size this for the largest accepted
+        dashboard action, console command, or OTA chunk message.
+
 config DASHBOARD_PORT
     int "Listen port"
     default 80 if DASHBOARD_USE_HTTP

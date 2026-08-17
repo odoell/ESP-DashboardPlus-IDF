@@ -5,6 +5,10 @@
 #include "esp_check.h"
 #include "esp_timer.h"
 
+#ifndef CONFIG_DASHBOARD_MAX_WS_FRAME_LEN
+#define CONFIG_DASHBOARD_MAX_WS_FRAME_LEN 4096
+#endif
+
 #if CONFIG_DASHBOARD_USE_HTTP
 #  include "esp_http_server.h"
 #else
@@ -54,6 +58,12 @@ static esp_err_t ws_handler(httpd_req_t* req) {
     esp_err_t ret = httpd_ws_recv_frame(req, &pkt, 0);
     if (ret != ESP_OK) return ret;
     if (pkt.len == 0) return ESP_OK;
+    if (pkt.len > CONFIG_DASHBOARD_MAX_WS_FRAME_LEN) {
+        ESP_LOGW(TAG, "Rejecting oversized WS frame: %u bytes (max %u)",
+                 static_cast<unsigned>(pkt.len),
+                 static_cast<unsigned>(CONFIG_DASHBOARD_MAX_WS_FRAME_LEN));
+        return ESP_ERR_INVALID_SIZE;
+    }
 
     auto* buf = static_cast<uint8_t*>(malloc(pkt.len + 1));
     if (!buf) return ESP_ERR_NO_MEM;
