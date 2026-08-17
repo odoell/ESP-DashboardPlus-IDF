@@ -1,5 +1,24 @@
 menu "ESP Dashboard Plus"
 
+config DASHBOARD_REQUIRE_WEBSOCKET
+    bool
+    default y
+    select HTTPD_WS_SUPPORT
+
+config DASHBOARD_ENABLE_OTA
+    bool "Compile OTA update support"
+    default y
+    help
+        Compile firmware-update message handling and the ESP-IDF application
+        update dependency.  Disable this when the product does not provide OTA.
+
+config DASHBOARD_ENABLE_CONSOLE
+    bool "Compile console command and log support"
+    default y
+    help
+        Compile inbound console commands and outbound console log messages.
+        Disable this when the product does not expose a browser console.
+
 config DASHBOARD_USE_HTTP
     bool "Use plain HTTP/WS instead of HTTPS/WSS"
     default n

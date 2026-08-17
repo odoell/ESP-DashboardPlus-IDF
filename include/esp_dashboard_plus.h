@@ -303,12 +303,16 @@ private:
 
     int64_t _lastHeartbeatMs;
 
+#if CONFIG_DASHBOARD_ENABLE_CONSOLE
     std::function<void(const char*)> _onCommandCb;
+#endif
 
+#if CONFIG_DASHBOARD_ENABLE_OTA
     void* _otaHandle;
     const void* _otaPartition;
     size_t _otaSize;
     size_t _otaReceived;
+#endif
 
     int  _knownFds[CONFIG_DASHBOARD_MAX_CLIENTS + 2];
     int  _knownFdCount;

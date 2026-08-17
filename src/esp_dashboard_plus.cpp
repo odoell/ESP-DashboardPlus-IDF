@@ -1,7 +1,9 @@
 #include "esp_dashboard_plus.h"
 #include "dashboard_server.h"
 #include "dashboard_cards.h"
+#if CONFIG_DASHBOARD_ENABLE_OTA
 #include "dashboard_ota.h"
+#endif
 #include <string.h>
 #include <stdlib.h>
 #include "esp_log.h"
@@ -24,8 +26,10 @@ ESPDashboardPlus::ESPDashboardPlus(const char* title)
       _server(nullptr),
       _enableOTA(true), _enableConsole(true),
       _lastHeartbeatMs(0),
+#if CONFIG_DASHBOARD_ENABLE_OTA
       _otaHandle(nullptr), _otaPartition(nullptr),
       _otaSize(0), _otaReceived(0),
+#endif
       _knownFdCount(0)
 {
     strncpy(_title, title, sizeof(_title) - 1);
@@ -55,8 +59,18 @@ esp_err_t ESPDashboardPlus::begin(const uint8_t* htmlData, size_t htmlSize,
                                    bool enableConsole, uint16_t port) {
     _htmlData      = htmlData;
     _htmlSize      = htmlSize;
+#if CONFIG_DASHBOARD_ENABLE_OTA
     _enableOTA     = enableOTA;
+#else
+    _enableOTA     = false;
+    (void)enableOTA;
+#endif
+#if CONFIG_DASHBOARD_ENABLE_CONSOLE
     _enableConsole = enableConsole;
+#else
+    _enableConsole = false;
+    (void)enableConsole;
+#endif
 
     // Allocate card pool — single contiguous allocation
     _cards    = new DashboardCardEntry[maxCards];
@@ -117,7 +131,11 @@ void ESPDashboardPlus::setVersionInfo(const char* version, const char* lastUpdat
 }
 
 void ESPDashboardPlus::onCommand(std::function<void(const char*)> handler) {
+#if CONFIG_DASHBOARD_ENABLE_CONSOLE
     _onCommandCb = handler;
+#else
+    (void)handler;
+#endif
 }
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
@@ -147,6 +165,7 @@ void ESPDashboardPlus::_broadcastUpdate(const char* cardId, const char* dataJson
 }
 
 void ESPDashboardPlus::_broadcastLog(LogLevel level, const char* message) {
+#if CONFIG_DASHBOARD_ENABLE_CONSOLE
     if (!_enableConsole) return;
 
     int64_t ms   = _millis();
@@ -166,6 +185,10 @@ void ESPDashboardPlus::_broadcastLog(LogLevel level, const char* message) {
     char* out = cJSON_PrintUnformatted(doc);
     cJSON_Delete(doc);
     if (out) { _broadcastJson(out); free(out); }
+#else
+    (void)level;
+    (void)message;
+#endif
 }
 
 // ─── _sendInitToClient() ─────────────────────────────────────────────────────
@@ -324,6 +347,7 @@ void ESPDashboardPlus::_sendInitToNewClients() {
 
 // --- Base64 decode (reused from original library) ----------------------------
 
+#if CONFIG_DASHBOARD_ENABLE_OTA
 static size_t _b64_decoded_len(const char* input, size_t inLen) {
     if (inLen < 2) return 0;
     size_t padding = 0;
@@ -351,6 +375,7 @@ static void _b64_decode(const char* input, size_t inLen, uint8_t* output) {
         }
     }
 }
+#endif
 
 // --- _handleWebSocketMessage() -----------------------------------------------
 
@@ -444,6 +469,7 @@ void ESPDashboardPlus::_handleWebSocketMessage(const char* data, size_t len) {
                 }
             }
 
+#if CONFIG_DASHBOARD_ENABLE_OTA
             if (_enableOTA) {
                 if (strcmp(action, "ota_start") == 0 && dataObj) {
                     cJSON* sz = cJSON_GetObjectItem(dataObj, "size");
@@ -469,11 +495,13 @@ void ESPDashboardPlus::_handleWebSocketMessage(const char* data, size_t len) {
                     ota_end(_otaSize, _otaReceived);
                 }
             }
+#endif
         }
         cJSON_Delete(doc);
         return;
     }
 
+#if CONFIG_DASHBOARD_ENABLE_CONSOLE
     if (strcmp(type, "command") == 0) {
         cJSON* cmd = cJSON_GetObjectItem(doc, "command");
         if (cmd && cJSON_IsString(cmd) && _onCommandCb) {
@@ -482,7 +510,9 @@ void ESPDashboardPlus::_handleWebSocketMessage(const char* data, size_t len) {
         cJSON_Delete(doc);
         return;
     }
+#endif
 
+#if CONFIG_DASHBOARD_ENABLE_OTA
     if (_enableOTA) {
         if (strcmp(type, "ota_start") == 0) {
             cJSON* sz = cJSON_GetObjectItem(doc, "size");
@@ -508,6 +538,7 @@ void ESPDashboardPlus::_handleWebSocketMessage(const char* data, size_t len) {
             ota_end(_otaSize, _otaReceived);
         }
     }
+#endif
 
     cJSON_Delete(doc);
 }

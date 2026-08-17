@@ -38,8 +38,10 @@ set(COMPONENT_SRCS
     "${LIB_DIR}/src/esp_dashboard_plus.cpp"
     "${LIB_DIR}/src/dashboard_server.cpp"
     "${LIB_DIR}/src/dashboard_cards.cpp"
-    "${LIB_DIR}/src/dashboard_ota.cpp"
 )
+if(CONFIG_DASHBOARD_ENABLE_OTA)
+    list(APPEND COMPONENT_SRCS "${LIB_DIR}/src/dashboard_ota.cpp")
+endif()
 if(EXISTS "${LIB_DIR}/src/dashboard_html.c")
     list(APPEND COMPONENT_SRCS "${LIB_DIR}/src/dashboard_html.c")
 endif()
@@ -50,13 +52,25 @@ else()
     set(_server_req "esp_https_server")
 endif()
 
+set(DASHBOARD_COMPONENT_REQUIRES
+    ${_server_req}
+    espressif__cjson
+    esp_wifi
+    nvs_flash
+    esp_event
+    esp_timer
+)
+
 idf_component_register(
     SRCS              ${COMPONENT_SRCS}
     INCLUDE_DIRS      "${LIB_DIR}/include"
     PRIV_INCLUDE_DIRS "${LIB_DIR}/src"
-    REQUIRES          ${_server_req} espressif__cjson esp_wifi nvs_flash esp_event
-                      app_update esp_timer
+    REQUIRES          ${DASHBOARD_COMPONENT_REQUIRES}
 )
+
+if(CONFIG_DASHBOARD_ENABLE_OTA)
+    idf_component_optional_requires(PUBLIC app_update)
+endif()
 
 if(NOT CONFIG_DASHBOARD_USE_HTTP)
     if(EXISTS "${LIB_DIR}/certs/server.crt" AND
