@@ -33,6 +33,12 @@ Frame-header and frame-payload receive errors, as well as frames exceeding
 `CONFIG_DASHBOARD_MAX_WS_FRAME_LEN`, close the affected session so it cannot
 remain in an invalid protocol state.
 
+Sessions awaiting asynchronous ESP-IDF closure are quarantined immediately.
+Broadcast enumeration and client-limit accounting skip quarantined descriptors;
+the marker is cleared if the HTTP server later reuses that descriptor for a new
+WebSocket upgrade. This prevents queued broadcasts to stale sessions from
+blocking a replacement client while closure work is still pending.
+
 The server retains ESP-IDF's default seven open client sockets. WebSocket
 clients are limited to five so ordinary page and asset requests retain at least
 two client slots. Broadcast enumeration covers the complete HTTP server client

@@ -21,8 +21,35 @@ extern const uint8_t _binary_server_key_end[]   asm("_binary_server_key_end");
 
 static const char* TAG = "dashboard_srv";
 static constexpr size_t MAX_HTTPD_CLIENT_SOCKETS = 7;
+static int s_closing_fds[MAX_HTTPD_CLIENT_SOCKETS] = {
+    -1, -1, -1, -1, -1, -1, -1
+};
 
 static void close_session(httpd_handle_t handle, int fd);
+
+static bool session_is_closing(int fd) {
+    for (const int closing_fd : s_closing_fds) {
+        if (closing_fd == fd) return true;
+    }
+    return false;
+}
+
+static void clear_closing_session(int fd) {
+    for (int& closing_fd : s_closing_fds) {
+        if (closing_fd == fd) closing_fd = -1;
+    }
+}
+
+static void mark_session_closing(int fd) {
+    if (session_is_closing(fd)) return;
+    for (int& closing_fd : s_closing_fds) {
+        if (closing_fd < 0) {
+            closing_fd = fd;
+            return;
+        }
+    }
+    ESP_LOGW(TAG, "closing-session quarantine full for fd=%d", fd);
+}
 
 // ─── HTML handler ────────────────────────────────────────────────────────────
 
@@ -46,6 +73,7 @@ static esp_err_t ws_handler(httpd_req_t* req) {
 
     if (req->method == HTTP_GET) {
         int fd = httpd_req_to_sockfd(req);
+        clear_closing_session(fd);
         ESP_LOGI(TAG, "WS client connected, fd=%d", fd);
         return ESP_OK;
     }
@@ -99,6 +127,7 @@ struct BroadcastArg {
 };
 
 static void close_session(httpd_handle_t handle, int fd) {
+    mark_session_closing(fd);
     esp_err_t err = httpd_sess_trigger_close(handle, fd);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "session close fd=%d: %s", fd, esp_err_to_name(err));
@@ -121,7 +150,8 @@ static void broadcast_work_fn(void* arg) {
     if (httpd_get_client_list(ba->hd, &client_cnt, client_fds) == ESP_OK) {
         size_t websocket_clients = 0;
         for (size_t i = 0; i < client_cnt; i++) {
-            if (httpd_ws_get_fd_info(ba->hd, client_fds[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
+            if (!session_is_closing(client_fds[i]) &&
+                httpd_ws_get_fd_info(ba->hd, client_fds[i]) == HTTPD_WS_CLIENT_WEBSOCKET) {
                 if (websocket_clients++ >= CONFIG_DASHBOARD_MAX_CLIENTS) continue;
                 esp_err_t err = httpd_ws_send_frame_async(ba->hd, client_fds[i], &pkt);
                 if (err != ESP_OK) {
