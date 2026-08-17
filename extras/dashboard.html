@@ -82,6 +82,42 @@
         linear-gradient(90deg, rgba(0, 212, 170, 0.015) 1px, transparent 1px);
       background-size: 100% 100%, 50px 50px, 50px 50px;
     }
+
+    #dashboard-loading {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.8rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      visibility: hidden;
+      animation: reveal-loading-state 0s linear 200ms forwards;
+    }
+
+    body.dashboard-ready #dashboard-loading { display: none; }
+    body:not(.dashboard-ready) header,
+    body:not(.dashboard-ready) .mobile-nav,
+    body:not(.dashboard-ready) .app-layout,
+    body:not(.dashboard-ready) footer { display: none; }
+
+    body.dashboard-ready header,
+    body.dashboard-ready .mobile-nav,
+    body.dashboard-ready .app-layout,
+    body.dashboard-ready footer {
+      animation: reveal-dashboard 150ms ease-out;
+    }
+
+    @keyframes reveal-loading-state {
+      to { visibility: visible; }
+    }
+
+    @keyframes reveal-dashboard {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
     
     .container {margin: 0; padding: 0 20px;}
 
@@ -1335,6 +1371,9 @@
   </style>
 </head>
 <body>
+  <div id="dashboard-loading" role="status" aria-live="polite">
+    Loading dashboard&hellip;
+  </div>
   <header>
     <div class="container">
       <div class="header-content">
@@ -1426,11 +1465,11 @@
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
       Dashboard
     </button>
-    <button class="nav-item" data-tab="console" id="mobile-nav-console" onclick="switchTab('console')">
+    <button class="nav-item" data-tab="console" id="mobile-nav-console" style="display:none" onclick="switchTab('console')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
       Console
     </button>
-    <button class="nav-item" data-tab="ota" id="mobile-nav-ota" onclick="switchTab('ota')">
+    <button class="nav-item" data-tab="ota" id="mobile-nav-ota" style="display:none" onclick="switchTab('ota')">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
       OTA Update
     </button>
@@ -1444,11 +1483,11 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>
           Dashboard
         </button>
-        <button class="nav-item" data-tab="console" id="sidebar-nav-console" onclick="switchTab('console')">
+        <button class="nav-item" data-tab="console" id="sidebar-nav-console" style="display:none" onclick="switchTab('console')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="4 17 10 11 4 5"></polyline><line x1="12" y1="19" x2="20" y2="19"></line></svg>
           Console
         </button>
-        <button class="nav-item" data-tab="ota" id="sidebar-nav-ota" onclick="switchTab('ota')">
+        <button class="nav-item" data-tab="ota" id="sidebar-nav-ota" style="display:none" onclick="switchTab('ota')">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
           OTA Update
         </button>
@@ -1722,6 +1761,7 @@
           }
           
           renderDashboard();
+          document.body.classList.add('dashboard-ready');
           
           // Update OTA info if provided
           if (msg.version) {

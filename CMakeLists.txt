@@ -19,19 +19,28 @@ if(NOT CONFIG_DASHBOARD_USE_HTTP)
     endif()
 endif()
 
-# Convert dashboard.html → dashboard_html.c (skips when content is unchanged)
-if(EXISTS "${LIB_DIR}/scripts/html_to_header_idf.py")
-    execute_process(
+# Convert dashboard.html → dashboard_html.c when its source or converter changes.
+if(EXISTS "${LIB_DIR}/scripts/html_to_header_idf.py" AND
+   NOT CMAKE_SCRIPT_MODE_FILE)
+    add_custom_command(
+        OUTPUT
+                "${LIB_DIR}/src/dashboard_html.c"
+                "${LIB_DIR}/include/dashboard_html.h"
         COMMAND ${PYTHON} "${LIB_DIR}/scripts/html_to_header_idf.py"
                 "${LIB_DIR}/extras/dashboard.html"
                 "${LIB_DIR}/src/dashboard_html.c"
                 "${LIB_DIR}/include/dashboard_html.h"
-        RESULT_VARIABLE _html_result
-        ERROR_VARIABLE  _html_error
+        DEPENDS
+                "${LIB_DIR}/extras/dashboard.html"
+                "${LIB_DIR}/scripts/html_to_header_idf.py"
+        COMMENT "Generating embedded dashboard HTML"
+        VERBATIM
     )
-    if(NOT _html_result EQUAL 0)
-        message(FATAL_ERROR "HTML conversion failed:\n${_html_error}")
-    endif()
+    add_custom_target(esp_dashboard_plus_html
+        DEPENDS
+                "${LIB_DIR}/src/dashboard_html.c"
+                "${LIB_DIR}/include/dashboard_html.h"
+    )
 endif()
 
 set(COMPONENT_SRCS
@@ -42,7 +51,7 @@ set(COMPONENT_SRCS
 if(CONFIG_DASHBOARD_ENABLE_OTA)
     list(APPEND COMPONENT_SRCS "${LIB_DIR}/src/dashboard_ota.cpp")
 endif()
-if(EXISTS "${LIB_DIR}/src/dashboard_html.c")
+if(EXISTS "${LIB_DIR}/scripts/html_to_header_idf.py")
     list(APPEND COMPONENT_SRCS "${LIB_DIR}/src/dashboard_html.c")
 endif()
 
@@ -67,6 +76,10 @@ idf_component_register(
     PRIV_INCLUDE_DIRS "${LIB_DIR}/src"
     REQUIRES          ${DASHBOARD_COMPONENT_REQUIRES}
 )
+
+if(TARGET esp_dashboard_plus_html)
+    add_dependencies(${COMPONENT_LIB} esp_dashboard_plus_html)
+endif()
 
 if(CONFIG_DASHBOARD_ENABLE_OTA)
     idf_component_optional_requires(PUBLIC app_update)

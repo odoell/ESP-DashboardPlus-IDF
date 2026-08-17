@@ -39,9 +39,11 @@ config DASHBOARD_MAX_STR_LEN
 config DASHBOARD_MAX_CLIENTS
     int "Max simultaneous WebSocket clients"
     default 4
-    range 1 8
+    range 1 5
     help
-        Maximum number of browser tabs / WebSocket connections served simultaneously.
+        Maximum number of browser tabs / WebSocket connections served
+        simultaneously. The upper bound leaves at least two of ESP-IDF's
+        default seven HTTP server client sockets available for HTTP requests.
 
 config DASHBOARD_MAX_WS_FRAME_LEN
     int "Max inbound WebSocket text frame length (bytes)"

@@ -25,12 +25,11 @@ ESPDashboardPlus::ESPDashboardPlus(const char* title)
       _groupCount(0),
       _server(nullptr),
       _enableOTA(true), _enableConsole(true),
-      _lastHeartbeatMs(0),
+      _lastHeartbeatMs(0)
 #if CONFIG_DASHBOARD_ENABLE_OTA
-      _otaHandle(nullptr), _otaPartition(nullptr),
-      _otaSize(0), _otaReceived(0),
+      , _otaHandle(nullptr), _otaPartition(nullptr),
+      _otaSize(0), _otaReceived(0)
 #endif
-      _knownFdCount(0)
 {
     strncpy(_title, title, sizeof(_title) - 1);
     _title[sizeof(_title) - 1] = '\0';
@@ -38,7 +37,6 @@ ESPDashboardPlus::ESPDashboardPlus(const char* title)
     _version[0]    = '\0';
     _lastUpdate[0] = '\0';
     memset(_groups,    0, sizeof(_groups));
-    memset(_knownFds,  0, sizeof(_knownFds));
 }
 
 ESPDashboardPlus::~ESPDashboardPlus() {
@@ -97,8 +95,6 @@ esp_err_t ESPDashboardPlus::begin(const uint8_t* htmlData, size_t htmlSize,
 // ─── loop() ─────────────────────────────────────────────────────────────────
 
 void ESPDashboardPlus::loop() {
-    _sendInitToNewClients();
-
     int64_t now = _millis();
     if (now - _lastHeartbeatMs >= 2500) {
         _lastHeartbeatMs = now;
@@ -300,51 +296,6 @@ void ESPDashboardPlus::_queueInitForFd(void* hd, int fd) {
     }
 }
 
-// ─── _sendInitToNewClients() ─────────────────────────────────────────────────
-// Called every loop(). Detects newly connected WebSocket clients by comparing
-// the current httpd client list against _knownFds. On new client: broadcasts
-// the full init message to all clients so the newcomer gets full state.
-
-void ESPDashboardPlus::_sendInitToNewClients() {
-    if (!_server) return;
-    httpd_handle_t hd = static_cast<httpd_handle_t>(_server);
-
-    size_t max_fds    = CONFIG_DASHBOARD_MAX_CLIENTS + 2;
-    size_t client_cnt = max_fds;
-    int    client_fds[CONFIG_DASHBOARD_MAX_CLIENTS + 2];
-
-    if (httpd_get_client_list(hd, &client_cnt, client_fds) != ESP_OK) return;
-
-    bool newClient = false;
-    for (size_t i = 0; i < client_cnt; i++) {
-        if (httpd_ws_get_fd_info(hd, client_fds[i]) != HTTPD_WS_CLIENT_WEBSOCKET) continue;
-        bool known = false;
-        for (int j = 0; j < _knownFdCount; j++) {
-            if (_knownFds[j] == client_fds[i]) { known = true; break; }
-        }
-        if (!known) {
-            if (_knownFdCount < (int)(CONFIG_DASHBOARD_MAX_CLIENTS + 2))
-                _knownFds[_knownFdCount++] = client_fds[i];
-            newClient = true;
-            ESP_LOGI(TAG, "New WS client fd=%d", client_fds[i]);
-        }
-    }
-
-    // Prune fds that have since disconnected
-    for (int j = _knownFdCount - 1; j >= 0; j--) {
-        bool found = false;
-        for (size_t i = 0; i < client_cnt; i++) {
-            if (client_fds[i] == _knownFds[j]) { found = true; break; }
-        }
-        if (!found) _knownFds[j] = _knownFds[--_knownFdCount];
-    }
-
-    if (newClient) {
-        char* out = _buildInitJson();
-        if (out) { _broadcastJson(out); free(out); }
-    }
-}
-
 // --- Base64 decode (reused from original library) ----------------------------
 
 #if CONFIG_DASHBOARD_ENABLE_OTA
@@ -379,7 +330,9 @@ static void _b64_decode(const char* input, size_t inLen, uint8_t* output) {
 
 // --- _handleWebSocketMessage() -----------------------------------------------
 
-void ESPDashboardPlus::_handleWebSocketMessage(const char* data, size_t len) {
+void ESPDashboardPlus::_handleWebSocketMessage(const char* data, size_t len,
+                                                void* serverHandle,
+                                                int clientFd) {
     if (!data || len == 0) return;
 
     cJSON* doc = cJSON_ParseWithLength(data, len);
@@ -397,6 +350,7 @@ void ESPDashboardPlus::_handleWebSocketMessage(const char* data, size_t len) {
 
     if (strcmp(type, "init") == 0) {
         cJSON_Delete(doc);
+        _queueInitForFd(serverHandle, clientFd);
         return;
     }
 

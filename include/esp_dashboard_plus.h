@@ -281,7 +281,8 @@ public:
     // ── Internal (used by dashboard_server.cpp) ───────────────────────
     void _onClientConnect(httpd_req_t* req);
     void _queueInitForFd(void* hd, int fd);
-    void _handleWebSocketMessage(const char* data, size_t len);
+    void _handleWebSocketMessage(const char* data, size_t len,
+                                 void* serverHandle, int clientFd);
     const uint8_t* _htmlData;
     size_t         _htmlSize;
 
@@ -314,15 +315,11 @@ private:
     size_t _otaReceived;
 #endif
 
-    int  _knownFds[CONFIG_DASHBOARD_MAX_CLIENTS + 2];
-    int  _knownFdCount;
-
     DashboardCardEntry* _findSlot();
     DashboardCardEntry* _findById(const char* id);
     void _broadcastJson(const char* json);
     void _broadcastUpdate(const char* cardId, const char* dataJson);
     void _broadcastLog(LogLevel level, const char* message);
     void _sendInitToClient(httpd_req_t* req);
-    void _sendInitToNewClients();
     char* _buildInitJson();
 };
