@@ -1656,7 +1656,7 @@
         // Start checking for message timeout
         if (messageTimeoutCheck) clearInterval(messageTimeoutCheck);
         messageTimeoutCheck = setInterval(() => {
-          if (lastMessageTime && Date.now() - lastMessageTime > 5000) {
+          if (lastMessageTime && Date.now() - lastMessageTime > 10000) {
             updateStatus(false);
             // Try to reconnect if WebSocket is closed, closing, or not receiving messages
             if (!ws || ws.readyState === WebSocket.CLOSED || ws.readyState === WebSocket.CLOSING) {

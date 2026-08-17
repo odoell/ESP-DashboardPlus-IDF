@@ -29,6 +29,10 @@ Asynchronous WebSocket sends that fail cause the affected HTTP server session
 to be closed. This releases stale client slots so a disconnected or
 unresponsive browser cannot permanently block later reconnects.
 
+Frame-header and frame-payload receive errors, as well as frames exceeding
+`CONFIG_DASHBOARD_MAX_WS_FRAME_LEN`, close the affected session so it cannot
+remain in an invalid protocol state.
+
 The server retains ESP-IDF's default seven open client sockets. WebSocket
 clients are limited to five so ordinary page and asset requests retain at least
 two client slots. Broadcast enumeration covers the complete HTTP server client
@@ -50,6 +54,10 @@ changes.
 The loading label is delayed by 200 milliseconds, avoiding a flash during fast
 initialization while remaining visible when startup actually takes longer. The
 initialized dashboard uses a short opacity transition into its complete state.
+
+The browser marks an open WebSocket stale after ten seconds without an inbound
+message. This tolerates short scheduling and network delays while retaining
+automatic recovery for an unresponsive connection.
 
 ## 📖 Documentation
 

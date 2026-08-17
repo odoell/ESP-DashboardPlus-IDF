@@ -22,6 +22,8 @@ extern const uint8_t _binary_server_key_end[]   asm("_binary_server_key_end");
 static const char* TAG = "dashboard_srv";
 static constexpr size_t MAX_HTTPD_CLIENT_SOCKETS = 7;
 
+static void close_session(httpd_handle_t handle, int fd);
+
 // ─── HTML handler ────────────────────────────────────────────────────────────
 
 static esp_err_t html_get_handler(httpd_req_t* req) {
@@ -52,12 +54,18 @@ static esp_err_t ws_handler(httpd_req_t* req) {
     pkt.type = HTTPD_WS_TYPE_TEXT;
 
     esp_err_t ret = httpd_ws_recv_frame(req, &pkt, 0);
-    if (ret != ESP_OK) return ret;
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "WS frame header receive fd=%d: %s",
+                 httpd_req_to_sockfd(req), esp_err_to_name(ret));
+        close_session(req->handle, httpd_req_to_sockfd(req));
+        return ret;
+    }
     if (pkt.len == 0) return ESP_OK;
     if (pkt.len > CONFIG_DASHBOARD_MAX_WS_FRAME_LEN) {
         ESP_LOGW(TAG, "Rejecting oversized WS frame: %u bytes (max %u)",
                  static_cast<unsigned>(pkt.len),
                  static_cast<unsigned>(CONFIG_DASHBOARD_MAX_WS_FRAME_LEN));
+        close_session(req->handle, httpd_req_to_sockfd(req));
         return ESP_ERR_INVALID_SIZE;
     }
 
@@ -73,6 +81,12 @@ static esp_err_t ws_handler(httpd_req_t* req) {
                                            httpd_req_to_sockfd(req));
     }
 
+    if (ret != ESP_OK) {
+        ESP_LOGW(TAG, "WS frame payload receive fd=%d: %s",
+                 httpd_req_to_sockfd(req), esp_err_to_name(ret));
+        close_session(req->handle, httpd_req_to_sockfd(req));
+    }
+
     free(buf);
     return ret;
 }
@@ -84,7 +98,7 @@ struct BroadcastArg {
     char* json;
 };
 
-static void close_failed_session(httpd_handle_t handle, int fd) {
+static void close_session(httpd_handle_t handle, int fd) {
     esp_err_t err = httpd_sess_trigger_close(handle, fd);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "session close fd=%d: %s", fd, esp_err_to_name(err));
@@ -113,7 +127,7 @@ static void broadcast_work_fn(void* arg) {
                 if (err != ESP_OK) {
                     ESP_LOGW(TAG, "send_frame_async fd=%d: %s",
                              client_fds[i], esp_err_to_name(err));
-                    close_failed_session(ba->hd, client_fds[i]);
+                    close_session(ba->hd, client_fds[i]);
                 }
             }
         }
@@ -142,7 +156,7 @@ static void send_to_fd_work_fn(void* arg) {
     esp_err_t err  = httpd_ws_send_frame_async(a->hd, a->fd, &pkt);
     if (err != ESP_OK) {
         ESP_LOGW(TAG, "send_to_fd fd=%d: %s", a->fd, esp_err_to_name(err));
-        close_failed_session(a->hd, a->fd);
+        close_session(a->hd, a->fd);
     }
     free(a->json);
     free(a);
